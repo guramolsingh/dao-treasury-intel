@@ -88,4 +88,6 @@ Known limitations of the current v1:
 
 4. **No governance integration yet.** Snapshot and Tally APIs are integrated in the v2 roadmap, allowing the memo to factor in pending proposals that affect treasury (e.g., a grants program expansion changes the burn rate assumption).
 
+5. **No token unlock data in v1.** DefiLlama moved the `/emissions/{slug}` endpoint behind their paid Pro tier (it now returns HTTP 402 for every DAO we track on the free endpoint). v1 therefore ships with `unlocks: []` for all DAOs and the memo omits scheduled-supply commentary. Unlock tracking moves to v2 via [TokenUnlocks.app](https://token.unlocks.app) or a paid DefiLlama Pro subscription, whichever is more permissive for non-commercial use.
+
 These are deliberate v1 limitations to ship something useful quickly. The point of the platform is to be 80% as good as institutional DAO treasury analysis at 0% of the cost — not to replace dedicated treasury teams at major protocols.

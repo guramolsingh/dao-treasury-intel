@@ -27,9 +27,16 @@ class DefiLlamaError(Exception):
     """Raised when DefiLlama returns an error or unexpected response."""
 
 
+class DefiLlamaPaidTierError(DefiLlamaError):
+    """Raised when DefiLlama returns 402 — endpoint moved to paid Pro tier."""
+
+
 async def _get(session: aiohttp.ClientSession, url: str) -> dict:
     """Internal HTTP GET wrapper with consistent error handling."""
     async with session.get(url, timeout=aiohttp.ClientTimeout(total=15)) as resp:
+        if resp.status == 402:
+            text = await resp.text()
+            raise DefiLlamaPaidTierError(f"GET {url} returned 402 (paid tier): {text[:200]}")
         if resp.status != 200:
             text = await resp.text()
             raise DefiLlamaError(f"GET {url} returned {resp.status}: {text[:200]}")
@@ -117,9 +124,17 @@ async def fetch_upcoming_unlocks(slug: str, months_ahead: int = 12) -> list[dict
 
     Returns chronological list of {date, amount_tokens, usd_value, category}.
     """
+    # v1 limitation: DefiLlama moved /emissions/{slug} behind their paid Pro tier
+    # in 2026 (returns HTTP 402 on the free endpoint for every DAO we track).
+    # We swallow that error and return [] so the rest of the analysis pipeline
+    # still runs. Unlock tracking will move to TokenUnlocks.app or DefiLlama Pro
+    # in v2 — see docs/methodology.md "Limitations".
     url = f"{DEFILLAMA_BASE}/emissions/{slug}"
-    async with aiohttp.ClientSession() as session:
-        raw = await _get(session, url)
+    try:
+        async with aiohttp.ClientSession() as session:
+            raw = await _get(session, url)
+    except DefiLlamaPaidTierError:
+        return []
 
     events = raw.get("events", [])
     # Each event: {timestamp, noOfTokens (list per category), description}
